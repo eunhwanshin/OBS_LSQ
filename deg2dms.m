@@ -38,11 +38,9 @@ dms = zeros(n,3);
 
 for i=1:n,
   if deg(i) < 0
-    s = -1;
 	d = deg(i) + 360;
   else
-    s = 1;
-	d = deg(i);
+    d = deg(i);
   end
   
   dms(i,1) = floor(d);
