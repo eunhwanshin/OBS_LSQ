@@ -95,7 +95,7 @@ We = inv(Qe);
 k = We * f;
 
 % the vector of residuals
-v = A_a' * k;
+v = Qll * A_a' * k;
 
 % Adjusted angles
 a_hat = (ma_as + v)./3600;
