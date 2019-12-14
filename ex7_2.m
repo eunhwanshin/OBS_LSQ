@@ -21,12 +21,7 @@
 clear;
 
 % Table 6.1: observation value and standard deviation 
-obs = [ ...
-16.5, 0.1;   % 1 (mm)
- 3.8, 0.1;   % 2 (mm)
-20.4, 0.1;   % 3 (mm)
-10.0, 0.05;  % 4 (m)
- 8.0, 0.05]; % 5 (m) 
+table6_1 
 
 Q = diag(obs(:,2).^2);
 
