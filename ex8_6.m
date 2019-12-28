@@ -1,9 +1,9 @@
 %% Eun Hwan Shin, 2019
 %
-% This file is an Octave implementation of Example 8.4.
+% This file is an Octave implementation of Example 8.6.
 % 
 % Mikhail, E. M. and Ackermann, F. (1976). Observations and Least Squares,
-%   Thomas Y. Crowell Company, Inc., pp. 180-181.
+%   Thomas Y. Crowell Company, Inc., p. 183.
 %
 % THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
 % IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -23,32 +23,34 @@ clear;
 % Get observations
 obs_ex8_4
 
-L = obs(:,1) + obs(:,2)/60 + obs(:,3)/3600;  
+% observations in arc-sec
+L = obs(:,1)*3600 + obs(:,2)*60 + obs(:,3);  
 
-% Setup condition equations: A v + B x = f 
-
-A = [ ...
-  1, 1, -1, 0,  0;
-  0, 1,  0, 1, -1];
+Q = [ ...
+  2, 1, 0, 0, 0;
+  1, 2, 1, 0, 0;
+  0, 1, 2, 1, 0;
+  0, 0, 1, 2, 1;
+  0, 0, 0, 1, 2];
   
-B = [0; 1];  
+% Observations only condition: A v = f
 
-f = -A * L;
+A = [1, 1, -1, 0, 0];
+f = -A * L;  
 
-Qe = A * A';
-We = inv(Qe);
+N = A * Q * A';
 
-N = B' * We * B;
-t = B' * We * f;
+k = f/N;
 
-% estimate the angle DPE
-Qxx = 1 / N;
-x = t * Qxx;
-fprintf('Angle DPE = \n');
+v = Q * A' * k;
+
+% Adjusted observations in degrees
+L_hat_deg = (L+v)/3600;
+
+x = [0, -1, 0, -1, 1] * L_hat_deg;
+
+fprintf('Adjusted angle DPE = \n')
 deg2dms(x)
-% residuals in arc-sec
-v = A' * We * (-B * x + f) * 3600;
 
-ref_var = v' * v;
-fprintf('Reference variance = %.6f (arc-sec^2)\n', ref_var);
-fprintf('var(Angle DPE) = %.6f (arc-sec^2)\n', ref_var * Qxx);
+% Note that with the correlation in Q, the adjusted x is different from
+% what we obtained in Example 8.4 (Q = I).
