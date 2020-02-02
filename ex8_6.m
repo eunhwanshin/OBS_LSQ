@@ -3,7 +3,7 @@
 % This file is an Octave implementation of Example 8.6.
 % 
 % Mikhail, E. M. and Ackermann, F. (1976). Observations and Least Squares,
-%   Thomas Y. Crowell Company, Inc., p. 183.
+%   Thomas Y. Crowell Company, Inc., pp. 183-184.
 %
 % THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
 % IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -38,19 +38,25 @@ Q = [ ...
 A = [1, 1, -1, 0, 0];
 f = -A * L;  
 
-N = A * Q * A';
+Qe = A * Q * A';
+We = 1/Qe;
 
-k = f/N;
+k = f * We;
 
 v = Q * A' * k;
 
 % Adjusted observations in degrees
 L_hat_deg = (L+v)/3600;
 
-x = [0, -1, 0, -1, 1] * L_hat_deg;
+B = [0, -1, 0, -1, 1];
+x = B * L_hat_deg;
 
 fprintf('Adjusted angle DPE = \n')
 deg2dms(x)
 
 % Note that with the correlation in Q, the adjusted x is different from
 % what we obtained in Example 8.4 (Q = I).
+
+Qvv = Q * A' * We * A * Q;
+Qll = Q - Qvv;
+Qxx = B * Qll * B';
