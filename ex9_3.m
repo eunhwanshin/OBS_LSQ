@@ -1,9 +1,10 @@
 %% Eun Hwan Shin, 2020
 %
-% This file is the Octave implementation of Example 9.2 
+% This file is the Octave implementation of Example 9.3, which solves
+% the problem in Example 9.2 by elimination of the constraint. 
 % 
 % Mikhail, E. M. and Ackermann, F. (1976). Observations and Least Squares,
-%   Thomas Y. Crowell Company, Inc., pp. 221-227.
+%   Thomas Y. Crowell Company, Inc., pp. 227-228.
 %
 % THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
 % IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
@@ -22,9 +23,6 @@ clear;
 
 % number of iterations
 n_iter = 6;
-
-% flag to apply the distance constraint between A and B
-use_constraint = 1;
 
 % Three terrestrial camera measurements from S1, S2, S3:
 photo_obs = [ ...
@@ -54,16 +52,18 @@ x1b = photo_obs(2,1) * x2b / p;
 fprintf('Approximate coordinates: \n');
 fprintf('  A = (%.2f, %.2f), B = (%.2f, %.2f)\n', ...
     x1a, x2a, x1b, x2b);
-	
+
 % Construct linearized model: A v + B delta = f
 
-B = [ ...
-  -p, photo_obs(1,1), 0, 0;
-  0, 0, -p, photo_obs(2,1);
-  p, photo_obs(1,2), 0, 0;
-  0, 0, p, photo_obs(2,2);
-  p, photo_obs(1,3), 0, 0;
-  0, 0, p, photo_obs(2,3)];
+% Partition B into B1 and B2
+B1 = [-p; 0; p; 0; p; 0];
+B2 = [ ...
+  photo_obs(1,1), 0, 0;
+  0, -p, photo_obs(2,1);
+  photo_obs(1,2), 0, 0;
+  0, p, photo_obs(2,2);
+  photo_obs(1,3), 0, 0;
+  0, p, photo_obs(2,3)];
 
 iter = 0;
 A = zeros(6,8);
@@ -93,82 +93,42 @@ while iter < n_iter,
     p*dist_obs(1)-p*x1b-photo_obs(2,2)*x2b;
     p*dist_obs(1)+p*dist_obs(2)-p*x1a-photo_obs(1,3)*x2a;
     p*dist_obs(1)+p*dist_obs(2)-p*x1b-photo_obs(2,3)*x2b];
-	
+
+  % Partition constrant matrix C into C1 and C2
+  C1 = 2*(x1a-x1b);
+  C2 = 2*[x2a-x2b, x1b-x1a, x2b-x2a];
+  g = 7.8^2 - (x1a-x1b)^2 - (x2a-x2b)^2;
+  
+  fprintf('Constraint: C1 = %.3f, C2 = [%.3f,%.3f,%.3f], g = %.6f\n', ...
+    C1, C2(1), C2(2), C2(3), g);
+ 
+  invC1 = 1/C1;
+  B_bar = -B1 * invC1 * C2 + B2;
+  f_bar = f - B1 * invC1 * g;
+
   QAt = Q * A';
   Qe = A * QAt;
   We = inv(Qe);
   
-  BtWe = B' * We;
-
-  N = BtWe * B;
-  t = BtWe * f;
-  invN = inv(N);  
-  delta = invN * t;
-
-  fprintf('delta = [%.3f, %.3f, %.3f, %.3f]''\n', ...
-    delta(1), delta(2), delta(3), delta(4));
-	
-  % precision of the estimated parameter	
-  Qdd = invN;	
+  N_bar = B_bar' * We * B_bar;
+  t_bar = B_bar' * We * f_bar;
   
-  if use_constraint 
-  
-    % Constraint: distance between A and B = 7.8 m
+  delta2 = inv(N_bar) * t_bar;
+  delta1 = invC1 * (g - C2 * delta2);
 
-    C = 2*[x1a-x1b, x2a-x2b, x1b-x1a, x2b-x2a];
-    g = 7.8^2 - (x1a-x1b)^2 - (x2a-x2b)^2;
-	
-	fprintf('Constraint: C = [%.3f,%.3f,%.3f,%.3f], g = %.6f\n', ...
-	  C(1), C(2), C(3), C(4), g);
-	  
-	M = C * invN * C';
-	invM = 1/M;
-    kc = invM *(g - C * delta);
-    dd = invN * C' * kc;
-	Qdd = Qdd - invN * C' * invM * C * invN;
-	
-	fprintf('Correction to delta = [%.3f,%.3f,%.3f,%.3f]''\n', ...
-	  dd(1), dd(2), dd(3), dd(4));
-	  
-    delta0 = delta;
-	delta = delta + dd;  
-	fprintf('Total correction = [%.3f,%.3f,%.3f,%.3f]''\n', ...
-	  delta(1), delta(2), delta(3), delta(4));
-	  
-  end    
-  
+  fprintf('delta1 = %.3f, delta2 = [%.3f, %.3f, %.3f]''\n', ...
+    delta1, delta2(1), delta2(2), delta2(3));
+
   % update parameters
-  x1a = x1a + delta(1);
-  x2a = x2a + delta(2);
-  x1b = x1b + delta(3);
-  x2b = x2b + delta(4);
+  x1a = x1a + delta1;
+  x2a = x2a + delta2(1);
+  x1b = x1b + delta2(2);
+  x2b = x2b + delta2(3);
 
   fprintf('Updated coordinates: \n');
-  fprintf('  (x1a, x2a) = (%.3f, %.3f), (x1b, x2b) = (%.3f, %.3f)\n', ...
+  fprintf('  A = (%.3f, %.3f), B = (%.3f, %.3f)\n', ...
     x1a, x2a, x1b, x2b);
-	
+
   fprintf('Distance between A and B = %.3f\n', sqrt((x1b-x1a)^2+(x2b-x2a)^2));
-	
+
 end	
-
-% Estimation of the precision
-	
-QAtWe = QAt * We;	
-QAtWeB = QAtWe * B;
-Qvv = QAtWe * QAt' - QAtWeB * Qdd * QAtWeB'; 
-Qll = Q - Qvv;
-fprintf('Qdd * 1000 = \n');
-Qdd * 1000
-fprintf('Qll * 1000 = \n');
-Qll * 1000
-
-% reference variance
-k = We * (f - B * delta);
-v = QAt * k;
-r = 2; % redundancy
-if use_constraint
-  r = r + 1;
-end  
-ref_var = v' * inv(Q) * v / r;
-
-fprintf('sigma_0^2 = %.4f\n', ref_var);
